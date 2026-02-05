@@ -3,7 +3,7 @@
 # All images are shell-less/distroless for security
 
 REGISTRY ?= ghcr.io
-OWNER ?= $(shell git config user.name | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+OWNER ?= djbender
 VERSION ?= $(shell date +%Y%m%d)
 JENKINS_VERSION ?= 2.541.1
 NGINX_VERSION ?= 1.29.4
