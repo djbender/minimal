@@ -105,6 +105,24 @@ jobs:
             echo "  -> Up to date"
           fi
 
+          # --- Ruby ---
+          CURRENT_RUBY=$(grep -oP 'ruby-\d+\.\d+' ruby/apko/ruby.yaml | head -1)
+          echo "Current Ruby package: $CURRENT_RUBY"
+
+          # Find all ruby-4.x packages
+          LATEST_RUBY=$(grep -E "^ruby-4\.[0-9]+ " /tmp/packages.txt | \
+            awk '{print $1}' | sort -t. -k2 -n | tail -1)
+          echo "Latest Ruby package: $LATEST_RUBY"
+
+          if [ -n "$LATEST_RUBY" ] && [ "$LATEST_RUBY" != "$CURRENT_RUBY" ]; then
+            echo "ruby_update=true" >> $GITHUB_OUTPUT
+            echo "ruby_current=$CURRENT_RUBY" >> $GITHUB_OUTPUT
+            echo "ruby_latest=$LATEST_RUBY" >> $GITHUB_OUTPUT
+            echo "  -> Update available: $CURRENT_RUBY -> $LATEST_RUBY"
+          else
+            echo "  -> Up to date"
+          fi
+
           # --- PostgreSQL ---
           CURRENT_PG=$(grep -oP 'postgresql-\d+' postgres-slim/apko/postgres.yaml | head -1)
           echo "Current PostgreSQL package: $CURRENT_PG"
@@ -137,6 +155,9 @@ jobs:
           fi
           if [ -n "$LATEST_DOTNET" ] && [ "$LATEST_DOTNET" != "$CURRENT_DOTNET" ]; then
             echo ".NET: $CURRENT_DOTNET -> $LATEST_DOTNET"
+          fi
+          if [ -n "$LATEST_RUBY" ] && [ "$LATEST_RUBY" != "$CURRENT_RUBY" ]; then
+            echo "Ruby: $CURRENT_RUBY -> $LATEST_RUBY"
           fi
           if [ -n "$LATEST_PG" ] && [ "$LATEST_PG" != "$CURRENT_PG" ]; then
             echo "PostgreSQL: $CURRENT_PG -> $LATEST_PG"
@@ -324,6 +345,52 @@ jobs:
 
       - name: Reset for next PR
         if: steps.check.outputs.dotnet_update == 'true'
+        run: git checkout -- .
+
+      # --- Ruby PR ---
+      - name: Update Ruby version
+        if: steps.check.outputs.ruby_update == 'true'
+        run: |
+          OLD="${{ steps.check.outputs.ruby_current }}"
+          NEW="${{ steps.check.outputs.ruby_latest }}"
+          sed -i "s/$OLD/$NEW/g" ruby/apko/ruby.yaml
+          echo "Updated ruby/apko/ruby.yaml: $OLD -> $NEW"
+
+      - name: Create Ruby PR
+        if: steps.check.outputs.ruby_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "chore(ruby): upgrade to ${{ steps.check.outputs.ruby_latest }}"
+          body: |
+            ## Summary
+
+            Upgrades Ruby from `${{ steps.check.outputs.ruby_current }}` to `${{ steps.check.outputs.ruby_latest }}`.
+
+            This is a **minor/major version upgrade** detected from Wolfi's package repository.
+
+            ## Changes
+
+            - `ruby/apko/ruby.yaml` - updated package reference
+
+            ## Before Merging
+
+            - [ ] Review [Ruby changelog](https://www.ruby-lang.org/en/news/)
+            - [ ] Verify CI passes (image builds and tests succeed)
+            - [ ] Check for breaking changes that may affect users
+
+            ---
+
+            Automatically created by [update-wolfi-packages](${{ github.server_url }}/${{ github.repository }}/actions/workflows/update-wolfi-packages.yml) workflow.
+          branch: update-ruby-${{ steps.check.outputs.ruby_latest }}
+          commit-message: "chore(ruby): upgrade to ${{ steps.check.outputs.ruby_latest }}"
+          delete-branch: true
+          labels: |
+            dependencies
+            ruby
+
+      - name: Reset for next PR
+        if: steps.check.outputs.ruby_update == 'true'
         run: git checkout -- .
 
       # --- PostgreSQL PR ---

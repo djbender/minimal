@@ -75,6 +75,9 @@ jobs:
           - name: dotnet
             apko_config: dotnet/apko/dotnet.yaml
             build_type: apko
+          - name: ruby
+            apko_config: ruby/apko/ruby.yaml
+            build_type: apko
 
     steps:
       - name: Checkout repository

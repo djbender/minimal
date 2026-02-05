@@ -9,15 +9,17 @@ JENKINS_VERSION ?= 2.541.1
 NGINX_VERSION ?= 1.29.4
 HTTPD_VERSION ?= 2.4.66
 REDIS_VERSION ?= 8.4.0
+ARCH ?= $(if $(filter arm64,$(shell uname -m)),aarch64,x86_64)
+DOCKER_ARCH := $(if $(filter aarch64,$(ARCH)),arm64,amd64)
 
 .PHONY: all build scan clean help
-.PHONY: python jenkins jenkins-melange go node-slim nginx httpd redis-slim redis-slim-melange postgres-slim bun sqlite dotnet keygen
-.PHONY: scan-python scan-jenkins scan-go scan-node-slim scan-nginx scan-httpd scan-redis-slim scan-postgres-slim scan-bun scan-sqlite scan-dotnet
+.PHONY: python jenkins jenkins-melange go node-slim nginx httpd redis-slim redis-slim-melange postgres-slim bun sqlite dotnet ruby keygen
+.PHONY: scan-python scan-jenkins scan-go scan-node-slim scan-nginx scan-httpd scan-redis-slim scan-postgres-slim scan-bun scan-sqlite scan-dotnet scan-ruby
 
 all: build scan
 
 # Build all images
-build: python jenkins go node-slim nginx httpd redis-slim postgres-slim bun sqlite dotnet
+build: python jenkins go node-slim nginx httpd redis-slim postgres-slim bun sqlite dotnet ruby
 
 #------------------------------------------------------------------------------
 # SIGNING KEY (required for melange packages)
@@ -37,11 +39,11 @@ python:
 	apko build python/apko/python.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-python:$(VERSION) \
 		python.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < python.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-python:latest
 	@rm -f python.tar sbom-*.spdx.json
 	@echo "✓ minimal-python built (Wolfi package, shell-less)"
@@ -52,7 +54,7 @@ python:
 jenkins-melange: keygen
 	@echo "Building Jenkins $(JENKINS_VERSION) with custom JRE (jlink) via melange..."
 	melange build jenkins/melange.yaml \
-		--arch x86_64,aarch64 \
+		--arch $(ARCH),aarch64 \
 		--signing-key melange.rsa
 	@echo "✓ Jenkins package built (custom JRE + WAR)"
 
@@ -61,13 +63,13 @@ jenkins: jenkins-melange
 	apko build jenkins/apko/jenkins.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION) \
 		jenkins.tar \
-		--arch x86_64 \
+		--arch $(ARCH) \
 		--repository-append ./packages \
 		--keyring-append melange.rsa.pub
 	docker load < jenkins.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-jenkins:latest
 	@rm -f jenkins.tar sbom-*.spdx.json
 	@echo "✓ minimal-jenkins built (jlink JRE, shell-less)"
@@ -80,11 +82,11 @@ go:
 	apko build go/apko/go.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-go:$(VERSION) \
 		go.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < go.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-go:latest
 	@rm -f go.tar sbom-*.spdx.json
 	@echo "✓ minimal-go built (Wolfi package, with build tools)"
@@ -97,11 +99,11 @@ node-slim:
 	apko build node-slim/apko/node.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION) \
 		node.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < node.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-node-slim:latest
 	@rm -f node.tar sbom-*.spdx.json
 	@echo "✓ minimal-node-slim built (Wolfi package)"
@@ -114,11 +116,11 @@ nginx:
 	apko build nginx/apko/nginx.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION) \
 		nginx.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < nginx.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-nginx:latest
 	@rm -f nginx.tar sbom-*.spdx.json
 	@echo "✓ minimal-nginx built (Wolfi package, shell-less)"
@@ -131,11 +133,11 @@ httpd:
 	apko build httpd/apko/httpd.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION) \
 		httpd.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < httpd.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-httpd:latest
 	@rm -f httpd.tar sbom-*.spdx.json
 	@echo "✓ minimal-httpd built (Wolfi package, shell-less)"
@@ -146,7 +148,7 @@ httpd:
 redis-slim-melange: keygen
 	@echo "Building Redis $(REDIS_VERSION) from source via melange..."
 	melange build redis-slim/melange.yaml \
-		--arch x86_64,aarch64 \
+		--arch $(ARCH),aarch64 \
 		--signing-key melange.rsa
 	@echo "✓ Redis package built from source"
 
@@ -155,13 +157,13 @@ redis-slim: redis-slim-melange
 	apko build redis-slim/apko/redis.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION) \
 		redis-slim.tar \
-		--arch x86_64 \
+		--arch $(ARCH) \
 		--repository-append ./packages \
 		--keyring-append melange.rsa.pub
 	docker load < redis-slim.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-redis-slim:latest
 	@rm -f redis-slim.tar sbom-*.spdx.json
 	@echo "✓ minimal-redis-slim built (source build)"
@@ -174,11 +176,11 @@ postgres-slim:
 	apko build postgres-slim/apko/postgres.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION) \
 		postgres-slim.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < postgres-slim.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-postgres-slim:latest
 	@rm -f postgres-slim.tar sbom-*.spdx.json
 	@echo "✓ minimal-postgres-slim built (Wolfi package)"
@@ -191,11 +193,11 @@ bun:
 	apko build bun/apko/bun.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION) \
 		bun.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < bun.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-bun:latest
 	@rm -f bun.tar sbom-*.spdx.json
 	@echo "✓ minimal-bun built (Wolfi package, shell-less)"
@@ -208,11 +210,11 @@ sqlite:
 	apko build sqlite/apko/sqlite.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION) \
 		sqlite.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < sqlite.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-sqlite:latest
 	@rm -f sqlite.tar sbom-*.spdx.json
 	@echo "✓ minimal-sqlite built (Wolfi package, shell-less)"
@@ -225,19 +227,36 @@ dotnet:
 	apko build dotnet/apko/dotnet.yaml \
 		$(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION) \
 		dotnet.tar \
-		--arch x86_64
+		--arch $(ARCH)
 	docker load < dotnet.tar
-	docker tag $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)
-	docker tag $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)-amd64 \
+	docker tag $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)-$(DOCKER_ARCH) \
 		$(REGISTRY)/$(OWNER)/minimal-dotnet:latest
 	@rm -f dotnet.tar sbom-*.spdx.json
 	@echo "✓ minimal-dotnet built (Wolfi package)"
 
 #------------------------------------------------------------------------------
+# RUBY IMAGE (Wolfi pre-built package, shell-less)
+#------------------------------------------------------------------------------
+ruby:
+	@echo "Assembling minimal-ruby image with apko..."
+	apko build ruby/apko/ruby.yaml \
+		$(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION) \
+		ruby.tar \
+		--arch $(ARCH)
+	docker load < ruby.tar
+	docker tag $(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION)-$(DOCKER_ARCH) \
+		$(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION)
+	docker tag $(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION)-$(DOCKER_ARCH) \
+		$(REGISTRY)/$(OWNER)/minimal-ruby:latest
+	@rm -f ruby.tar sbom-*.spdx.json
+	@echo "✓ minimal-ruby built (Wolfi package, shell-less)"
+
+#------------------------------------------------------------------------------
 # CVE SCANNING
 #------------------------------------------------------------------------------
-scan: scan-python scan-jenkins scan-go scan-node-slim scan-nginx scan-httpd scan-redis-slim scan-postgres-slim scan-bun scan-sqlite scan-dotnet
+scan: scan-python scan-jenkins scan-go scan-node-slim scan-nginx scan-httpd scan-redis-slim scan-postgres-slim scan-bun scan-sqlite scan-dotnet scan-ruby
 
 scan-python:
 	@echo "Scanning minimal-python..."
@@ -305,6 +324,12 @@ scan-dotnet:
 		$(REGISTRY)/$(OWNER)/minimal-dotnet:latest
 	@echo "✓ minimal-dotnet: scan passed"
 
+scan-ruby:
+	@echo "Scanning minimal-ruby..."
+	trivy image --exit-code 1 --severity CRITICAL,HIGH \
+		$(REGISTRY)/$(OWNER)/minimal-ruby:latest
+	@echo "✓ minimal-ruby: scan passed"
+
 # Full scan with all severities
 scan-all:
 	@echo "Full vulnerability scan..."
@@ -330,6 +355,8 @@ scan-all:
 		$(REGISTRY)/$(OWNER)/minimal-sqlite:latest
 	trivy image --severity CRITICAL,HIGH,MEDIUM,LOW \
 		$(REGISTRY)/$(OWNER)/minimal-dotnet:latest
+	trivy image --severity CRITICAL,HIGH,MEDIUM,LOW \
+		$(REGISTRY)/$(OWNER)/minimal-ruby:latest
 
 #------------------------------------------------------------------------------
 # IMAGE SIZE REPORT
@@ -337,12 +364,12 @@ scan-all:
 size:
 	@echo "Image sizes:"
 	@docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | \
-		grep -E "(minimal-python|minimal-jenkins|minimal-go|minimal-node-slim|minimal-nginx|minimal-httpd|minimal-redis-slim|minimal-postgres-slim|minimal-bun|minimal-sqlite|minimal-dotnet)" || true
+		grep -E "(minimal-python|minimal-jenkins|minimal-go|minimal-node-slim|minimal-nginx|minimal-httpd|minimal-redis-slim|minimal-postgres-slim|minimal-bun|minimal-sqlite|minimal-dotnet|minimal-ruby)" || true
 
 #------------------------------------------------------------------------------
 # TESTING
 #------------------------------------------------------------------------------
-test: test-python test-jenkins test-go test-node-slim test-nginx test-httpd test-redis-slim test-postgres-slim test-bun test-sqlite test-dotnet
+test: test-python test-jenkins test-go test-node-slim test-nginx test-httpd test-redis-slim test-postgres-slim test-bun test-sqlite test-dotnet test-ruby
 
 test-python:
 	@echo "Testing Python image..."
@@ -492,6 +519,20 @@ test-dotnet:
 		-c "echo fail" 2>/dev/null && echo "FAIL: shell found!" && exit 1 || echo "✓ No shell (as expected)"
 	@echo "✓ .NET Runtime tests passed"
 
+test-ruby:
+	@echo "Testing Ruby image..."
+	docker run --rm $(REGISTRY)/$(OWNER)/minimal-ruby:latest -e "puts RUBY_VERSION"
+	@echo "Testing TLS/SSL..."
+	docker run --rm $(REGISTRY)/$(OWNER)/minimal-ruby:latest \
+		-e "require 'openssl'; puts 'TLS OK: ' + OpenSSL::OPENSSL_VERSION"
+	@echo "Testing stdlib..."
+	docker run --rm $(REGISTRY)/$(OWNER)/minimal-ruby:latest \
+		-e "require 'json'; puts JSON.generate({ok: true})"
+	@echo "Verifying no shell..."
+	@docker run --rm --entrypoint /bin/sh $(REGISTRY)/$(OWNER)/minimal-ruby:latest \
+		-c "echo fail" 2>/dev/null && echo "FAIL: shell found!" && exit 1 || echo "✓ No shell (as expected)"
+	@echo "✓ Ruby tests passed"
+
 #------------------------------------------------------------------------------
 # PUSH TO REGISTRY
 #------------------------------------------------------------------------------
@@ -518,6 +559,8 @@ push:
 	docker push $(REGISTRY)/$(OWNER)/minimal-sqlite:latest
 	docker push $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)
 	docker push $(REGISTRY)/$(OWNER)/minimal-dotnet:latest
+	docker push $(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION)
+	docker push $(REGISTRY)/$(OWNER)/minimal-ruby:latest
 
 #------------------------------------------------------------------------------
 # CLEANUP
@@ -525,38 +568,41 @@ push:
 clean:
 	@echo "Cleaning up..."
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-python:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-python:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-jenkins:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-jenkins:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-go:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-go:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-node-slim:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-node-slim:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-nginx:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-nginx:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-httpd:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-httpd:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-redis-slim:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-redis-slim:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-postgres-slim:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-postgres-slim:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-bun:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-bun:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-sqlite:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-sqlite:latest 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION) 2>/dev/null || true
-	docker rmi $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)-amd64 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-dotnet:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
 	docker rmi $(REGISTRY)/$(OWNER)/minimal-dotnet:latest 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION) 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-ruby:$(VERSION)-$(DOCKER_ARCH) 2>/dev/null || true
+	docker rmi $(REGISTRY)/$(OWNER)/minimal-ruby:latest 2>/dev/null || true
 	rm -f *.tar sbom-*.spdx.json
 	rm -rf packages/
 	@echo "✓ Cleanup complete"
@@ -583,6 +629,7 @@ help:
 	@echo "  make bun             Build Bun (Wolfi package)"
 	@echo "  make sqlite          Build SQLite (Wolfi package)"
 	@echo "  make dotnet          Build .NET Runtime (Wolfi package)"
+	@echo "  make ruby            Build Ruby (Wolfi package, shell-less)"
 	@echo "  make build           Build all images"
 	@echo ""
 	@echo "Scanning:"
@@ -601,5 +648,6 @@ help:
 	@echo "  NGINX_VERSION=$(NGINX_VERSION)"
 	@echo "  HTTPD_VERSION=$(HTTPD_VERSION)"
 	@echo "  REDIS_VERSION=$(REDIS_VERSION)"
+	@echo "  ARCH=$(ARCH)"
 	@echo "  REGISTRY=$(REGISTRY)"
 	@echo "  OWNER=$(OWNER)"
