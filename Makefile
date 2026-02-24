@@ -8,7 +8,7 @@ VERSION ?= $(shell date +%Y%m%d)
 JENKINS_VERSION ?= 2.541.1
 NGINX_VERSION ?= 1.29.4
 HTTPD_VERSION ?= 2.4.66
-REDIS_VERSION ?= 8.4.0
+REDIS_VERSION ?= 8.6.1
 ARCH ?= $(if $(filter arm64,$(shell uname -m)),aarch64,x86_64)
 DOCKER_ARCH := $(if $(filter aarch64,$(ARCH)),arm64,amd64)
 
