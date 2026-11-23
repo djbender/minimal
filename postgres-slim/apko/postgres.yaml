@@ -11,11 +11,11 @@ contents:
     - wolfi-baselayout
 
     # PostgreSQL from Wolfi (CVE-patched)
-    - postgresql-18
-    - postgresql-18-base
-    - postgresql-18-client
-    - postgresql-18-client-base
-    - postgresql-18-contrib
+    - postgresql-19
+    - postgresql-19-base
+    - postgresql-19-client
+    - postgresql-19-client-base
+    - postgresql-19-contrib
     - ecpg-18
     - libpq-18
     - pgaudit-18
